@@ -526,7 +526,7 @@ var maxTravelU = 0;
 
 function spawnPillar(sock, kind, h){
   var p = { sock: sock, x: sock.x, z: sock.z, h: h, k: KINDS[kind], kind: kind,
-            rise: 0.45, cutStroke: -1, m: getMesh(kind) };
+            rise: 0.45, m: getMesh(kind) };
   pillars.push(p);
   sock.busy = true;
   return p;
@@ -682,10 +682,13 @@ function tryCuts(a, b, shps, ux, uy){
   for (var i = pillars.length - 1; i >= 0; i--) {
     var p = pillars[i];
     if (p.rise > 0) continue;
-    if (p.cutStroke === strokeId) continue;
     var base = toScreen(p.x, p.z, 0.2), top = toScreen(p.x, p.z, p.h);
     var r = seg2seg(a, b, base, top);
-    if (r.d > tol) continue;
+    /* one pass = one cut, so a single fast swipe cannot shred a pillar into four. But the lock
+       lifts the moment the blade is clear of it, so sawing back and forth without lifting the
+       finger keeps cutting - that is the whole point of holding the stroke. */
+    if (r.d > tol) { p.cutLock = false; continue; }
+    if (p.cutLock) continue;
     if (shps < p.k.need) {
       /* sparks but no cut - the material tells you it needs a harder stroke, with no words */
       burst(p.x, 0.2 + r.t * (p.h - 0.2), p.z, 0xfff0c0, 3, 1.1);
@@ -702,7 +705,7 @@ function tryCuts(a, b, shps, ux, uy){
     var wdx = w1.x - w0.x, wdz = w1.z - w0.z;
     var uPerPx = Math.hypot(wdx, wdz) / 60;
     var worldSp = shps * vpH() * uPerPx;
-    p.cutStroke = strokeId;
+    p.cutLock = true;
     if (doCut(p, cy, wdx, wdz, worldSp, shps > p.k.need * 1.6)) {
       n++;
       cutPend = performance.now(); cutDrawMs = null;
@@ -1123,7 +1126,7 @@ window.__feel = {
     S.phase = "sim";
     var sk = sockets[sockIdx % sockets.length];
     var p = { sock: null, x: sk.x, z: sk.z, h: HMAX, k: KINDS[kind || "stone"],
-              kind: kind || "stone", rise: 0, cutStroke: -1, m: null };
+              kind: kind || "stone", rise: 0, m: null };
     pillars.push(p);
     var cy = Math.max(0.55, Math.min(p.h - 0.45, 0.2 + frac * (p.h - 0.2)));
     var inward = sk.x > 0 ? -1 : 1;
@@ -1198,7 +1201,7 @@ window.__feel = {
       for (i = 0; i < sockets.length; i++) {
         var sk = sockets[i];
         var p = { sock: null, x: sk.x, z: sk.z, h: HMAX, k: KINDS.stone, kind: "stone",
-                  rise: 0, cutStroke: -1, m: null };
+                  rise: 0, m: null };
         pillars = [p];
         var mid = toScreen(p.x, p.z, p.h * 0.4);
         var inward = sk.x > 0 ? -1 : 1;
@@ -1237,7 +1240,7 @@ window.__feel = {
     cutPend = null; cutDrawMs = null;
     var saveP = pillars.slice(), savePhase = S.phase;
     var p = { sock: null, x: sockets[0].x, z: sockets[0].z, h: HMAX, k: KINDS.stone,
-              kind: "stone", rise: 0, cutStroke: -1, m: getMesh("stone") };
+              kind: "stone", rise: 0, m: getMesh("stone") };
     pillars = [p]; S.phase = "play";
     var mid = toScreen(p.x, p.z, p.h * 0.4);
     var inward = p.x > 0 ? -1 : 1, L = 0.12 * vpH();
@@ -1265,7 +1268,7 @@ window.__feel = {
     for (var i = 0; i < sockets.length; i++) {
       var sk = sockets[i];
       var p = { sock: null, x: sk.x, z: sk.z, h: HMAX, k: KINDS.stone, kind: "stone",
-                rise: 0, cutStroke: -1, m: null };
+                rise: 0, m: null };
       pillars = [p]; chunks = [];
       var mid = toScreen(p.x, p.z, p.h * 0.4);
       var inward = sk.x > 0 ? -1 : 1, L = 0.12 * vpH();

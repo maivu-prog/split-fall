@@ -1,5 +1,5 @@
 # split-fall
 
-SPLIT FALL - swipe to cut a pillar, topple it into the fire
+SPLIT FALL - mot dong tu: CAT
 
 Play: https://maivu-prog.github.io/split-fall/
